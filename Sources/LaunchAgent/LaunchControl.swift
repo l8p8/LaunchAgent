@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import CryptoKit
 import SystemConfiguration
 
 /// Errors related to controlling jobs
@@ -120,6 +121,49 @@ public class LaunchControl {
         
         agent.url = url
     }
+	
+	/// Writes a LaunchAgent to disk as a property list into the user's LaunchAgents directory
+	/// Will only write to the file if the contents have changed
+	///
+	/// The agent's label will be used as the filename with a `.plist` extension.
+	///
+	/// - Parameters:
+	///   - agent: the agent to encode
+	/// - Throws: errors on encoding the property list
+	/// - Returns: WriteIfChangedResult struct
+	@available(macOS 10.15, *)
+	public func writeIfChanged(_ agent: LaunchAgent) throws -> WriteIfChangedResult {
+		let url = try launchAgentsURL().appendingPathComponent("\(agent.label).plist")
+		
+		let data = try encoder.encode(agent)
+		
+		let exists = FileManager.default.fileExists(atPath: url.path)
+		
+		if exists {
+			do {
+				let content = SHA256.hash(data: data)
+				
+				let existing = try getSHA256(forFile: url)
+				
+				let unchanged = content.elementsEqual(existing)
+				
+				if unchanged {
+					return WriteIfChangedResult(existed: exists, modified: false)
+				}
+			} catch {}
+		}
+		
+		try data.write(to: url)
+		
+		agent.url = url
+		
+		return WriteIfChangedResult(existed: exists, modified: true)
+	}
+	
+	public struct WriteIfChangedResult {
+		public let existed: Bool
+		public let modified: Bool
+	}
     
     /// Sets the provided LaunchAgent's URL based on its `label`
     ///
@@ -144,6 +188,25 @@ public class LaunchControl {
         
     }
     
+	@available(macOS 10.15, *)
+	private func getSHA256(forFile url: URL) throws -> SHA256.Digest {
+		let handle = try FileHandle(forReadingFrom: url)
+		var hasher = SHA256()
+		
+		while autoreleasepool(invoking: {
+			let nextChunk = handle.readData(ofLength: SHA256.blockByteCount)
+			
+			guard !nextChunk.isEmpty else {
+				return false
+			}
+			
+			hasher.update(data: nextChunk)
+			
+			return true
+		}) { }
+		
+		return hasher.finalize()
+	}
 }
 
 // MARK: - Job control
@@ -151,69 +214,69 @@ extension LaunchControl {
     /// Run `launchctl start` on the agent
     ///
     /// Check the status of the job with `.status(_: LaunchAgent)`
-    public func start(_ agent: LaunchAgent) {
+    public func start(_ agent: LaunchAgent) -> Process {
         let arguments = ["start", agent.label]
-        Process.launchedProcess(launchPath: LaunchControl.launchctl, arguments: arguments)
+        return Process.launchedProcess(launchPath: LaunchControl.launchctl, arguments: arguments)
     }
     
     /// Run `launchctl stop` on the agent
     ///
     /// Check the status of the job with `.status(_: LaunchAgent)`
-    public func stop(_ agent: LaunchAgent) {
+    public func stop(_ agent: LaunchAgent) -> Process {
         let arguments = ["stop", agent.label]
-        Process.launchedProcess(launchPath: LaunchControl.launchctl, arguments: arguments)
+        return Process.launchedProcess(launchPath: LaunchControl.launchctl, arguments: arguments)
     }
     
     /// Run `launchctl load` on the agent
     ///
     /// Check the status of the job with `.status(_: LaunchAgent)`
     @available(macOS, deprecated: 10.11)
-    public func load(_ agent: LaunchAgent) throws {
+    public func load(_ agent: LaunchAgent) throws -> Process {
         guard let agentURL = agent.url else {
             throw LaunchControlError.urlNotSet(label: agent.label)
         }
         
         let arguments = ["load", agentURL.path]
-        Process.launchedProcess(launchPath: LaunchControl.launchctl, arguments: arguments)
+        return Process.launchedProcess(launchPath: LaunchControl.launchctl, arguments: arguments)
     }
     
     /// Run `launchctl unload` on the agent
     ///
     /// Check the status of the job with `.status(_: LaunchAgent)`
     @available(macOS, deprecated: 10.11)
-    public func unload(_ agent: LaunchAgent) throws {
+    public func unload(_ agent: LaunchAgent) throws -> Process {
         guard let agentURL = agent.url else {
             throw LaunchControlError.urlNotSet(label: agent.label)
         }
         
         let arguments = ["unload", agentURL.path]
-        Process.launchedProcess(launchPath: LaunchControl.launchctl, arguments: arguments)
+        return Process.launchedProcess(launchPath: LaunchControl.launchctl, arguments: arguments)
     }
     
     /// Run `launchctl bootstrap` on the agent
     ///
     /// Check the status of the job with `.status(_: LaunchAgent)`
     @available(macOS, introduced: 10.11)
-    public func bootstrap(_ agent: LaunchAgent) throws {
+    public func bootstrap(_ agent: LaunchAgent) throws -> Process {
         guard let agentURL = agent.url else {
             throw LaunchControlError.urlNotSet(label: agent.label)
         }
         
         let arguments = ["bootstrap", "gui/\(uid)", agentURL.path]
-        Process.launchedProcess(launchPath: LaunchControl.launchctl, arguments: arguments)
+        return Process.launchedProcess(launchPath: LaunchControl.launchctl, arguments: arguments)
     }
     
     /// Run `launchctl bootout` on the agent
     ///
     /// Check the status of the job with `.status(_: LaunchAgent)`
     @available(macOS, introduced: 10.11)
-    public func bootout(_ agent: LaunchAgent) throws {
+    public func bootout(_ agent: LaunchAgent) throws -> Process {
         guard let agentURL = agent.url else {
             throw LaunchControlError.urlNotSet(label: agent.label)
         }
         
         let arguments = ["bootout", "gui/\(uid)", agentURL.path]
-        Process.launchedProcess(launchPath: LaunchControl.launchctl, arguments: arguments)
+        return Process.launchedProcess(launchPath: LaunchControl.launchctl, arguments: arguments)
     }
     
     /// Retreives the status of the LaunchAgent from `launchctl`

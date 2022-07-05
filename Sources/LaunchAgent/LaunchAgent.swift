@@ -22,6 +22,9 @@ public class LaunchAgent: Codable {
     public var url: URL? = nil
     
     // Basic Properties
+	/// Custom version for your property list
+	public var version: String? = nil
+	
     /// Contains a unique string that identifies your daemon to launchd.
     public var label: String
     
@@ -364,6 +367,8 @@ public class LaunchAgent: Codable {
     // MARK: - Codable
     /// launchd.plist keys
     public enum CodingKeys: String, CodingKey {
+		/// Version
+		case version = "Version"
         /// Label
         case label = "Label"
         /// Disabled
