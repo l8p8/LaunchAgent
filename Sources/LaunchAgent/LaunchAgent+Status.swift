@@ -41,47 +41,47 @@ extension LaunchAgent {
     /// Run `launchctl start` on the agent
     ///
     /// Check the status of the job with `.status()`
-    public func start() {
-        LaunchControl.shared.start(self)
+    public func start() -> Process {
+        return LaunchControl.shared.start(self)
     }
     
     /// Run `launchctl stop` on the agent
     ///
     /// Check the status of the job with `.status()`
-    public func stop() {
-        LaunchControl.shared.stop(self)
+    public func stop() -> Process {
+        return LaunchControl.shared.stop(self)
     }
     
     /// Run `launchctl load` on the agent
     ///
     /// Check the status of the job with `.status()`
     @available(macOS, deprecated: 10.11)
-    public func load() throws {
-        try LaunchControl.shared.load(self)
+    public func load() throws -> Process {
+        return try LaunchControl.shared.load(self)
     }
     
     /// Run `launchctl unload` on the agent
     ///
     /// Check the status of the job with `.status()`
     @available(macOS, deprecated: 10.11)
-    public func unload() throws {
-        try LaunchControl.shared.unload(self)
+    public func unload() throws -> Process {
+        return try LaunchControl.shared.unload(self)
     }
     
     /// Run `launchctl bootstrap` on the agent
     ///
     /// Check the status of the job with `.status()`
     @available(macOS, introduced: 10.11)
-    public func bootstrap() throws {
-        try LaunchControl.shared.bootstrap(self)
+    public func bootstrap() throws -> Process {
+        return try LaunchControl.shared.bootstrap(self)
     }
     
     /// Run `launchctl bootout` on the agent
     ///
     /// Check the status of the job with `.status()`
     @available(macOS, introduced: 10.11)
-    public func bootout() throws {
-        try LaunchControl.shared.bootout(self)
+    public func bootout() throws -> Process {
+        return try LaunchControl.shared.bootout(self)
     }
     
     /// Retreives the status of the LaunchAgent from `launchctl`
