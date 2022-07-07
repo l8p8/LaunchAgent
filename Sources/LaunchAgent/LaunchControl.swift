@@ -52,10 +52,24 @@ public class LaunchControl {
     /// - Returns: ~/Library/LaunchAgent
     /// - Throws: FileManager errors
     func launchAgentsURL() throws -> URL {
-        let library = try FileManager.default.url(for: .libraryDirectory, in: .userDomainMask, appropriateFor: nil, create: false)
+        // let library = try FileManager.default.url(for: .libraryDirectory, in: .userDomainMask, appropriateFor: nil, create: false)
+		
+		guard let home = realHomeDirectory() else {
+			throw URLError(.badURL)
+		}
 
-        return library.appendingPathComponent("LaunchAgents")
+		return home
+			.appendingPathComponent("Library")
+			.appendingPathComponent("LaunchAgents")
     }
+	
+	private func realHomeDirectory() -> URL? {
+		guard let pw = getpwuid(getuid()) else {
+			return nil
+		}
+		
+		return URL(fileURLWithFileSystemRepresentation: pw.pointee.pw_dir, isDirectory: true, relativeTo: nil)
+	}
     
     /// Read a LaunchAgent from the user's LaunchAgents directory
     ///
